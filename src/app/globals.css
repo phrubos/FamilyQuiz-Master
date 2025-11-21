@@ -1,26 +1,239 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  /* Christmas Color Palette - Nordic Winter */
+  --bg-primary: #0c1524;
+  --bg-secondary: #142238;
+  --foreground: #f5f0e8;
+  --gold: #d4a853;
+  --gold-light: #f4d998;
+  --burgundy: #8b2942;
+  --cream: #faf7f2;
+  --frost: rgba(255, 255, 255, 0.08);
+  --frost-strong: rgba(255, 255, 255, 0.15);
+  --snow: #e8f4ff;
+  --pine: #1e4d3d;
+  --berry: #c41e3a;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Shadows and glows */
+  --glow-gold: 0 0 40px rgba(212, 168, 83, 0.3);
+  --glow-warm: 0 0 60px rgba(255, 200, 100, 0.15);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 body {
-  background: var(--background);
+  background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, #1a1a3e 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Nunito', sans-serif;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar with Christmas theme */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--gold) 0%, var(--burgundy) 100%);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold-light);
+}
+
+/* Prevent text selection on buttons */
+button {
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Frosted glass effect */
+.frost-glass {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.frost-glass-strong {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Gold gradient text */
+.text-gold-gradient {
+  background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 50%, #b8860b 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Warm glow button */
+.btn-warm {
+  background: linear-gradient(135deg, var(--gold) 0%, #c4963f 100%);
+  color: #1a1a1a;
+  box-shadow: 0 4px 20px rgba(212, 168, 83, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.btn-warm:hover {
+  box-shadow: 0 6px 30px rgba(212, 168, 83, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-warm:active {
+  transform: translateY(0);
+}
+
+/* Berry/Christmas red button */
+.btn-berry {
+  background: linear-gradient(135deg, var(--berry) 0%, var(--burgundy) 100%);
+  color: white;
+  box-shadow: 0 4px 20px rgba(196, 30, 58, 0.3);
+  transition: all 0.3s ease;
+}
+
+.btn-berry:hover {
+  box-shadow: 0 6px 30px rgba(196, 30, 58, 0.5);
+  transform: translateY(-2px);
+}
+
+/* Pine/Green button */
+.btn-pine {
+  background: linear-gradient(135deg, #2d6a4f 0%, var(--pine) 100%);
+  color: white;
+  box-shadow: 0 4px 20px rgba(30, 77, 61, 0.4);
+  transition: all 0.3s ease;
+}
+
+.btn-pine:hover {
+  box-shadow: 0 6px 30px rgba(30, 77, 61, 0.6);
+  transform: translateY(-2px);
+}
+
+/* Snowflake animation */
+@keyframes snowfall {
+  0% {
+    transform: translateY(-10vh) translateX(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) translateX(100px) rotate(360deg);
+    opacity: 0.3;
+  }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(212, 168, 83, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(212, 168, 83, 0.6), 0 0 60px rgba(255, 200, 100, 0.3);
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-snowfall {
+  animation: snowfall linear infinite;
+}
+
+.animate-twinkle {
+  animation: twinkle ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Christmas card styling */
+.christmas-card {
+  background: linear-gradient(135deg, rgba(20, 34, 56, 0.9) 0%, rgba(12, 21, 36, 0.95) 100%);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(212, 168, 83, 0.2);
+  border-radius: 1.5rem;
+  box-shadow: var(--shadow-card), 0 0 40px rgba(212, 168, 83, 0.1);
+}
+
+/* Input styling */
+.christmas-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(212, 168, 83, 0.3);
+  color: var(--cream);
+  transition: all 0.3s ease;
+}
+
+.christmas-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(212, 168, 83, 0.2);
+  outline: none;
+}
+
+.christmas-input::placeholder {
+  color: rgba(245, 240, 232, 0.3);
+}
+
+/* Decorative ornament */
+.ornament {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--berry) 0%, var(--burgundy) 100%);
+  box-shadow: 0 0 10px rgba(196, 30, 58, 0.5);
+}
+
+/* Star decoration */
+.star {
+  color: var(--gold);
+  text-shadow: 0 0 10px rgba(212, 168, 83, 0.8);
+}
+
+/* Timer urgency colors */
+.timer-safe {
+  color: var(--cream);
+}
+
+.timer-warning {
+  color: var(--gold);
+}
+
+.timer-danger {
+  color: var(--berry);
+}
+
+/* Leaderboard position styles */
+.rank-gold {
+  background: linear-gradient(135deg, rgba(212, 168, 83, 0.3) 0%, rgba(180, 134, 11, 0.3) 100%);
+  border: 2px solid var(--gold);
+}
+
+.rank-silver {
+  background: linear-gradient(135deg, rgba(192, 192, 192, 0.3) 0%, rgba(169, 169, 169, 0.3) 100%);
+  border: 2px solid #c0c0c0;
+}
+
+.rank-bronze {
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.3) 0%, rgba(184, 115, 51, 0.3) 100%);
+  border: 2px solid #cd7f32;
 }
