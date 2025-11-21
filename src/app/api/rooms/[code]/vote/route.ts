@@ -103,33 +103,35 @@ export async function POST(
         votes: voteCounts,
       });
 
-      // Automatically proceed to next question
-      setTimeout(async () => {
-        const room = getRoom(code);
-        if (room && room.questions[room.currentQuestionIndex]) {
-            setQuestionStartTime(code);
-            
-            const nextQ = room.questions[room.currentQuestionIndex];
-            const categoryData = categories.find(c => c.questions.some(q => q.id === nextQ.id));
-            const currentRound = room.rounds[room.currentRoundIndex];
-            
-            await pusherServer.trigger(getGameChannel(code), 'question-shown', {
-              question: {
-                ...nextQ,
-                categoryName: categoryData?.name,
-                isBonus: categoryData?.isBonus || false,
-              },
-              questionIndex: room.currentQuestionIndex,
-              totalQuestions: room.questions.length,
-              roundInfo: {
-                  current: room.currentRoundIndex + 1,
-                  total: room.rounds.length,
-                  name: currentRound.name,
-                  type: currentRound.type
-              }
-            });
-        }
-      }, 4000);
+      // Automatically proceed to next question (send immediately, client handles delay)
+      const updatedRoom = getRoom(code);
+      if (updatedRoom && updatedRoom.questions[updatedRoom.currentQuestionIndex]) {
+          setQuestionStartTime(code);
+
+          const nextQ = updatedRoom.questions[updatedRoom.currentQuestionIndex];
+          const categoryData = categories.find(c => c.questions.some(q => q.id === nextQ.id));
+          const currentRound = updatedRoom.rounds[updatedRoom.currentRoundIndex];
+
+          await pusherServer.trigger(getGameChannel(code), 'question-shown', {
+            question: {
+              ...nextQ,
+              categoryName: categoryData?.name,
+              isBonus: categoryData?.isBonus || false,
+            },
+            questionIndex: updatedRoom.currentQuestionIndex,
+            totalQuestions: updatedRoom.questions.length,
+            roundInfo: {
+                current: updatedRoom.currentRoundIndex + 1,
+                total: updatedRoom.rounds.length,
+                name: currentRound.name,
+                type: currentRound.type
+            },
+            serverTime: Date.now(),
+            timeLimit: updatedRoom.settings.timeLimit,
+            // Tell client to delay showing for 4 seconds (to show winner)
+            showDelay: 4000
+          });
+      }
 
       return NextResponse.json({
         success: true,
