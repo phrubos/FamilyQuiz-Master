@@ -143,38 +143,47 @@ export default function HostPage({ params }: Props) {
       setAnsweredCount(data.answeredCount);
     });
 
-    channel.bind('question-shown', (data: { question: ExtendedQuestion; questionIndex: number; totalQuestions: number; roundInfo?: RoundInfo }) => {
-      // KRITIKUS: Állítsuk be a status-t 'playing'-re, hogy a játék képernyő megjelenjen
-      setStatus('playing');
-      
-      // Tisztítsuk meg a voting state-et
-      setVotingData(null);
-      setVotingWinner(null);
-      setVotingTimeRemaining(0);
-      
-      if (data.roundInfo) {
-          // Check for round change
-          setRoundInfo(prev => {
-              if (prev && prev.current !== data.roundInfo!.current) {
-                  setTransitionRoundInfo(data.roundInfo!);
-                  setShowRoundTransition(true);
-                  soundManager.play('whoosh'); // Or some fanfare
-                  setTimeout(() => setShowRoundTransition(false), 3000);
-              }
-              return data.roundInfo!;
-          });
-      } else {
-          setRoundInfo(null);
-      }
+    channel.bind('question-shown', (data: { question: ExtendedQuestion; questionIndex: number; totalQuestions: number; roundInfo?: RoundInfo; showDelay?: number }) => {
+      const showQuestion = () => {
+        // KRITIKUS: Állítsuk be a status-t 'playing'-re, hogy a játék képernyő megjelenjen
+        setStatus('playing');
 
-      setCurrentQuestion(data.question);
-      setQuestionIndex(data.questionIndex);
-      setTotalQuestions(data.totalQuestions);
-      setTimeRemaining(settings?.timeLimit || 15);
-      setAnsweredCount(0);
-      setShowResults(false);
-      setCorrectAnswer(null);
-      setNextQuestionCountdown(0);
+        // Tisztítsuk meg a voting state-et
+        setVotingData(null);
+        setVotingWinner(null);
+        setVotingTimeRemaining(0);
+
+        if (data.roundInfo) {
+            // Check for round change
+            setRoundInfo(prev => {
+                if (prev && prev.current !== data.roundInfo!.current) {
+                    setTransitionRoundInfo(data.roundInfo!);
+                    setShowRoundTransition(true);
+                    soundManager.play('whoosh'); // Or some fanfare
+                    setTimeout(() => setShowRoundTransition(false), 3000);
+                }
+                return data.roundInfo!;
+            });
+        } else {
+            setRoundInfo(null);
+        }
+
+        setCurrentQuestion(data.question);
+        setQuestionIndex(data.questionIndex);
+        setTotalQuestions(data.totalQuestions);
+        setTimeRemaining(settings?.timeLimit || 15);
+        setAnsweredCount(0);
+        setShowResults(false);
+        setCorrectAnswer(null);
+        setNextQuestionCountdown(0);
+      };
+
+      // Handle delay from server (for Vercel serverless compatibility)
+      if (data.showDelay) {
+        setTimeout(showQuestion, data.showDelay);
+      } else {
+        showQuestion();
+      }
     });
 
     channel.bind('question-ended', (data: { correctAnswer: number | string; leaderboard: Player[] }) => {
@@ -216,15 +225,24 @@ export default function HostPage({ params }: Props) {
     });
 
     // Voting events
-    channel.bind('voting-started', (data: { categories: CategoryOption[]; duration: number; endTime: number }) => {
-      setStatus('voting');
-      setVotingData({
-        categories: data.categories,
-        endTime: data.endTime,
-        votes: {}
-      });
-      setVotingTimeRemaining(Math.ceil(data.duration / 1000));
-      setVotingWinner(null);
+    channel.bind('voting-started', (data: { categories: CategoryOption[]; duration: number; endTime: number; showDelay?: number }) => {
+      const showVoting = () => {
+        setStatus('voting');
+        setVotingData({
+          categories: data.categories,
+          endTime: data.endTime,
+          votes: {}
+        });
+        setVotingTimeRemaining(Math.ceil(data.duration / 1000));
+        setVotingWinner(null);
+      };
+
+      // Handle delay from server (for Vercel serverless compatibility)
+      if (data.showDelay) {
+        setTimeout(showVoting, data.showDelay);
+      } else {
+        showVoting();
+      }
     });
 
     channel.bind('vote-cast', (data: { currentVotes: Record<string, number> }) => {

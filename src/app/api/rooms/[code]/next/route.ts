@@ -50,49 +50,49 @@ export async function POST(
     const nextQ = updatedRoom.questions[updatedRoom.currentQuestionIndex];
     const category = categories.find(c => c.questions.some(q => q.id === nextQ.id));
 
-    // Wait 4 seconds before showing next question (optimized from 8s)
-    // (2s to see correct answer + 2s transition)
-    setTimeout(async () => {
-      setQuestionStartTime(code);
+    // Set question start time
+    setQuestionStartTime(code);
 
-      const currentRound = updatedRoom.rounds[updatedRoom.currentRoundIndex];
+    const currentRound = updatedRoom.rounds[updatedRoom.currentRoundIndex];
 
-      await pusherServer.trigger(getGameChannel(code), 'question-shown', {
-        question: {
-          ...nextQ,
-          categoryName: category?.name,
-          isBonus: category?.isBonus || false,
-        },
-        questionIndex: updatedRoom.currentQuestionIndex,
-        totalQuestions: updatedRoom.questions.length,
-        roundInfo: {
-            current: updatedRoom.currentRoundIndex + 1,
-            total: updatedRoom.rounds.length,
-            name: currentRound.name,
-            type: currentRound.type
-        },
-        // FÁZIS 4: Server timestamp for timer sync
-        serverTime: Date.now(),
-        timeLimit: updatedRoom.settings.timeLimit
-      });
-    }, 4000);
+    // Send next question event immediately (client handles delay)
+    await pusherServer.trigger(getGameChannel(code), 'question-shown', {
+      question: {
+        ...nextQ,
+        categoryName: category?.name,
+        isBonus: category?.isBonus || false,
+      },
+      questionIndex: updatedRoom.currentQuestionIndex,
+      totalQuestions: updatedRoom.questions.length,
+      roundInfo: {
+          current: updatedRoom.currentRoundIndex + 1,
+          total: updatedRoom.rounds.length,
+          name: currentRound.name,
+          type: currentRound.type
+      },
+      serverTime: Date.now(),
+      timeLimit: updatedRoom.settings.timeLimit,
+      // Tell client to delay showing for 4 seconds
+      showDelay: 4000
+    });
 
     return NextResponse.json({ success: true, gameEnded: false });
   } else {
     // Check if we entered voting phase
     if (updatedRoom.status === 'voting' && updatedRoom.votingState) {
-        setTimeout(async () => {
-            await pusherServer.trigger(getGameChannel(code), 'voting-started', {
-                categories: updatedRoom.votingState!.options.map(id => ({
-                    id,
-                    name: CATEGORY_META[id]?.name || id,
-                    icon: CATEGORY_META[id]?.icon || '🎲',
-                    color: CATEGORY_META[id]?.color || '#ffffff'
-                })),
-                duration: 10000,
-                endTime: updatedRoom.votingState!.endTime
-            });
-        }, 4000);
+        // Send voting event immediately (client handles delay)
+        await pusherServer.trigger(getGameChannel(code), 'voting-started', {
+            categories: updatedRoom.votingState!.options.map(id => ({
+                id,
+                name: CATEGORY_META[id]?.name || id,
+                icon: CATEGORY_META[id]?.icon || '🎲',
+                color: CATEGORY_META[id]?.color || '#ffffff'
+            })),
+            duration: 10000,
+            endTime: updatedRoom.votingState!.endTime,
+            // Tell client to delay showing for 4 seconds
+            showDelay: 4000
+        });
         return NextResponse.json({ success: true, voting: true });
     }
 
