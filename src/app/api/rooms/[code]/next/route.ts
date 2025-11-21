@@ -40,51 +40,57 @@ export async function POST(
   // Move to next question
   const hasNext = nextQuestion(code);
 
+  // Get fresh room state after nextQuestion modified it
+  const updatedRoom = getRoom(code);
+  if (!updatedRoom) {
+    return NextResponse.json({ error: 'Szoba nem található' }, { status: 404 });
+  }
+
   if (hasNext) {
-    const nextQ = room.questions[room.currentQuestionIndex];
+    const nextQ = updatedRoom.questions[updatedRoom.currentQuestionIndex];
     const category = categories.find(c => c.questions.some(q => q.id === nextQ.id));
 
     // Wait 4 seconds before showing next question (optimized from 8s)
     // (2s to see correct answer + 2s transition)
     setTimeout(async () => {
       setQuestionStartTime(code);
-      
-      const currentRound = room.rounds[room.currentRoundIndex];
-      
+
+      const currentRound = updatedRoom.rounds[updatedRoom.currentRoundIndex];
+
       await pusherServer.trigger(getGameChannel(code), 'question-shown', {
         question: {
           ...nextQ,
           categoryName: category?.name,
           isBonus: category?.isBonus || false,
         },
-        questionIndex: room.currentQuestionIndex,
-        totalQuestions: room.questions.length,
+        questionIndex: updatedRoom.currentQuestionIndex,
+        totalQuestions: updatedRoom.questions.length,
         roundInfo: {
-            current: room.currentRoundIndex + 1,
-            total: room.rounds.length,
+            current: updatedRoom.currentRoundIndex + 1,
+            total: updatedRoom.rounds.length,
             name: currentRound.name,
             type: currentRound.type
         },
         // FÁZIS 4: Server timestamp for timer sync
         serverTime: Date.now(),
-        timeLimit: room.settings.timeLimit
+        timeLimit: updatedRoom.settings.timeLimit
       });
     }, 4000);
 
     return NextResponse.json({ success: true, gameEnded: false });
   } else {
     // Check if we entered voting phase
-    if (room.status === 'voting' && room.votingState) {
+    if (updatedRoom.status === 'voting' && updatedRoom.votingState) {
         setTimeout(async () => {
             await pusherServer.trigger(getGameChannel(code), 'voting-started', {
-                categories: room.votingState!.options.map(id => ({
+                categories: updatedRoom.votingState!.options.map(id => ({
                     id,
                     name: CATEGORY_META[id]?.name || id,
                     icon: CATEGORY_META[id]?.icon || '🎲',
                     color: CATEGORY_META[id]?.color || '#ffffff'
                 })),
                 duration: 10000,
-                endTime: room.votingState!.endTime
+                endTime: updatedRoom.votingState!.endTime
             });
         }, 4000);
         return NextResponse.json({ success: true, voting: true });
