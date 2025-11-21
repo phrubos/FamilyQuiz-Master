@@ -40,7 +40,16 @@ export default function PlayPage({ params }: Props) {
   const searchParams = useSearchParams();
   const autoJoinAttempted = useRef(false);
   const [name, setName] = useState('');
-  const [avatar, setAvatar] = useState<AvatarId>(() => getRandomAvatar());
+  const [avatar, setAvatar] = useState<AvatarId>(() => {
+    // Initialize from localStorage to avoid flash of two selected avatars
+    if (typeof window !== 'undefined') {
+      const savedAvatar = localStorage.getItem('playerAvatar') as AvatarId | null;
+      if (savedAvatar && AVATARS.find(av => av.id === savedAvatar)) {
+        return savedAvatar;
+      }
+    }
+    return getRandomAvatar();
+  });
   const [playerId, setPlayerId] = useState('');
   const [teamId, setTeamId] = useState<TeamId | undefined>();
   const [settings, setSettings] = useState<GameSettings | null>(null);
@@ -105,17 +114,13 @@ export default function PlayPage({ params }: Props) {
   // FÁZIS 4: Connection state
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
 
-  // Load saved player data from localStorage
+  // Load saved player name from localStorage
   useEffect(() => {
     const savedName = localStorage.getItem('playerName');
-    const savedAvatar = localStorage.getItem('playerAvatar') as AvatarId | null;
-
     if (savedName) {
       setName(savedName);
     }
-    if (savedAvatar && AVATARS.find(av => av.id === savedAvatar)) {
-      setAvatar(savedAvatar);
-    }
+    // Note: avatar is already loaded in useState initializer
   }, []);
 
   // Auto-join if URL has autoJoin parameter and we have saved data

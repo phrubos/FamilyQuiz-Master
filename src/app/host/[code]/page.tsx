@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useEffect, useState, useCallback, use, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import QRCode from 'qrcode';
 import { useRouter } from 'next/navigation';
@@ -90,6 +90,9 @@ export default function HostPage({ params }: Props) {
   
   // Countdown state
   const [startCountdown, setStartCountdown] = useState<number | null>(null);
+
+  // Ref to prevent duplicate /next API calls
+  const isCallingNextRef = useRef(false);
 
   // Generate QR code with auto-join parameter for returning players
   useEffect(() => {
@@ -279,7 +282,8 @@ export default function HostPage({ params }: Props) {
 
   // Auto-show results when time runs out
   useEffect(() => {
-    if (timeRemaining === 0 && !showResults && status === 'playing' && hostId) {
+    if (timeRemaining === 0 && !showResults && status === 'playing' && hostId && !isCallingNextRef.current) {
+      isCallingNextRef.current = true;
       console.log('Timer ended, calling /next API', { hostId, code });
       fetch(`/api/rooms/${code}/next`, {
         method: 'POST',
@@ -291,6 +295,13 @@ export default function HostPage({ params }: Props) {
         .catch(err => console.error('Next API error:', err));
     }
   }, [timeRemaining, showResults, status, code, hostId]);
+
+  // Reset the ref when a new question is shown
+  useEffect(() => {
+    if (currentQuestion) {
+      isCallingNextRef.current = false;
+    }
+  }, [currentQuestion]);
 
   // Automatikus következő kérdés - nincs szükség gombra
   // A backend automatikusan küldi a következő kérdést 4 másodperc után
