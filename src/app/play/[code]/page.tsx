@@ -113,7 +113,7 @@ export default function PlayPage({ params }: Props) {
     if (savedName) {
       setName(savedName);
     }
-    if (savedAvatar && AVATARS[savedAvatar]) {
+    if (savedAvatar && AVATARS.find(av => av.id === savedAvatar)) {
       setAvatar(savedAvatar);
     }
   }, []);
