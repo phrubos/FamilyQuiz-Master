@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, use, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState, use } from 'react';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import Background from '@/components/layout/Background';
 import { pusherClient, getGameChannel } from '@/lib/pusher';
@@ -37,19 +36,8 @@ interface ExtendedQuestion extends Question {
 
 export default function PlayPage({ params }: Props) {
   const { code } = use(params);
-  const searchParams = useSearchParams();
-  const autoJoinAttempted = useRef(false);
   const [name, setName] = useState('');
-  const [avatar, setAvatar] = useState<AvatarId>(() => {
-    // Initialize from localStorage to avoid flash of two selected avatars
-    if (typeof window !== 'undefined') {
-      const savedAvatar = localStorage.getItem('playerAvatar') as AvatarId | null;
-      if (savedAvatar && AVATARS.find(av => av.id === savedAvatar)) {
-        return savedAvatar;
-      }
-    }
-    return getRandomAvatar();
-  });
+  const [avatar, setAvatar] = useState<AvatarId | null>(null);
   const [playerId, setPlayerId] = useState('');
   const [teamId, setTeamId] = useState<TeamId | undefined>();
   const [settings, setSettings] = useState<GameSettings | null>(null);
@@ -114,49 +102,35 @@ export default function PlayPage({ params }: Props) {
   // FÁZIS 4: Connection state
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
 
-  // Load saved player name from localStorage
+  // Initialize random avatar on mount to avoid hydration mismatch
   useEffect(() => {
-    const savedName = localStorage.getItem('playerName');
-    if (savedName) {
-      setName(savedName);
-    }
-    // Note: avatar is already loaded in useState initializer
+    setAvatar(getRandomAvatar());
   }, []);
-
-  // Auto-join if URL has autoJoin parameter and we have saved data
-  useEffect(() => {
-    if (autoJoinAttempted.current) return;
-
-    const shouldAutoJoin = searchParams.get('autoJoin') === 'true';
-    const savedName = localStorage.getItem('playerName');
-
-    if (shouldAutoJoin && savedName && savedName.trim().length >= 2) {
-      autoJoinAttempted.current = true;
-      // Small delay to ensure state is loaded
-      setTimeout(() => {
-        joinRoom();
-      }, 100);
-    }
-  }, [searchParams]);
 
   const joinRoom = async () => {
     const trimmedName = name.trim();
-    
+
     // FÁZIS 2: Név validáció
     if (!trimmedName) {
       setError('Add meg a neved!');
       soundManager.play('wrong');
       return;
     }
-    
+
     if (trimmedName.length < 2) {
       setError('A név legalább 2 karakter legyen!');
       soundManager.play('wrong');
       return;
     }
-    
+
     if (trimmedName.length > 20) {
       setError('A név maximum 20 karakter lehet!');
+      soundManager.play('wrong');
+      return;
+    }
+
+    if (!avatar) {
+      setError('Válassz avatárt!');
       soundManager.play('wrong');
       return;
     }
@@ -205,10 +179,6 @@ export default function PlayPage({ params }: Props) {
       setPlayerId(data.player.id);
       setIsJoined(true);
       soundManager.play('correct');
-
-      // Save player data for future quick joins
-      localStorage.setItem('playerName', trimmedName);
-      localStorage.setItem('playerAvatar', avatar);
     } catch (err) {
       // FÁZIS 4: Better network error handling
       console.error('Join room error:', err);
