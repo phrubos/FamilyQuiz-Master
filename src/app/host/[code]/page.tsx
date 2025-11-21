@@ -57,6 +57,8 @@ export default function HostPage({ params }: Props) {
   const [qrCode, setQrCode] = useState('');
   const [players, setPlayers] = useState<Player[]>([]);
   const [status, setStatus] = useState<'waiting' | 'playing' | 'voting' | 'paused' | 'finished'>('waiting');
+  const [roomError, setRoomError] = useState<string | null>(null);
+  const [isLoadingRoom, setIsLoadingRoom] = useState(true);
   const [currentQuestion, setCurrentQuestion] = useState<ExtendedQuestion | null>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(50);
@@ -94,23 +96,47 @@ export default function HostPage({ params }: Props) {
   // Ref to prevent duplicate /next API calls
   const isCallingNextRef = useRef(false);
 
-  // Generate QR code with auto-join parameter for returning players
-  useEffect(() => {
-    const url = `${window.location.origin}/play/${code}?autoJoin=true`;
-    QRCode.toDataURL(url, { width: 200, margin: 1 }).then(setQrCode);
-  }, [code]);
-
   // Get host ID
   useEffect(() => {
     const id = localStorage.getItem('hostId') || '';
     setHostId(id);
   }, []);
 
-  // Fetch initial room data
+  // Fetch initial room data and generate QR code only after room is verified
   useEffect(() => {
-    fetch(`/api/rooms/${code}`)
-      .then(res => res.json())
-      .then(data => {
+    let retryCount = 0;
+    const maxRetries = 3;
+    const retryDelay = 500; // ms
+
+    const fetchRoom = async () => {
+      try {
+        const res = await fetch(`/api/rooms/${code}`);
+
+        if (!res.ok) {
+          if (res.status === 404) {
+            // Room not found - maybe serverless cold start, retry
+            if (retryCount < maxRetries) {
+              retryCount++;
+              console.log(`Room not found, retrying (${retryCount}/${maxRetries})...`);
+              setTimeout(fetchRoom, retryDelay * retryCount);
+              return;
+            }
+            setRoomError('A szoba nem található. Kérlek hozz létre egy új játékot.');
+            setIsLoadingRoom(false);
+            return;
+          }
+          throw new Error(`HTTP error: ${res.status}`);
+        }
+
+        const data = await res.json();
+
+        if (data.error) {
+          setRoomError(data.error);
+          setIsLoadingRoom(false);
+          return;
+        }
+
+        // Room exists - set data and generate QR code
         setPlayers(data.players || []);
         setStatus(data.status);
         if (data.currentQuestion) {
@@ -119,7 +145,29 @@ export default function HostPage({ params }: Props) {
         setQuestionIndex(data.currentQuestionIndex || 0);
         setTotalQuestions(data.totalQuestions || 50);
         setSettings(data.settings || null);
-      });
+
+        // Generate QR code only after room is confirmed to exist
+        const url = `${window.location.origin}/play/${code}?autoJoin=true`;
+        const qr = await QRCode.toDataURL(url, { width: 200, margin: 1 });
+        setQrCode(qr);
+
+        setRoomError(null);
+        setIsLoadingRoom(false);
+
+      } catch (error) {
+        console.error('Failed to fetch room:', error);
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.log(`Fetch failed, retrying (${retryCount}/${maxRetries})...`);
+          setTimeout(fetchRoom, retryDelay * retryCount);
+          return;
+        }
+        setRoomError('Hiba történt a szoba betöltésekor. Kérlek próbáld újra.');
+        setIsLoadingRoom(false);
+      }
+    };
+
+    fetchRoom();
   }, [code]);
 
   // Subscribe to Pusher events
@@ -427,6 +475,56 @@ export default function HostPage({ params }: Props) {
   const goHome = useCallback(() => {
     router.push('/');
   }, [router]);
+
+  // Loading screen
+  if (isLoadingRoom) {
+    return (
+      <main className="min-h-screen relative p-8 flex items-center justify-center">
+        <Background theme={settings?.theme} />
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            className="text-6xl mb-4"
+          >
+            ⌛
+          </motion.div>
+          <h2 className="text-2xl font-bold text-white mb-2">Szoba betöltése...</h2>
+          <p className="text-white/60">Kód: <span className="font-mono">{code}</span></p>
+        </motion.div>
+      </main>
+    );
+  }
+
+  // Error screen
+  if (roomError) {
+    return (
+      <main className="min-h-screen relative p-8 flex items-center justify-center">
+        <Background theme={settings?.theme} />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="christmas-card p-8 max-w-md text-center"
+        >
+          <div className="text-6xl mb-4">❌</div>
+          <h2 className="text-2xl font-bold text-white mb-4">Hiba történt</h2>
+          <p className="text-red-300 mb-6">{roomError}</p>
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => router.push('/')}
+            className="px-6 py-3 btn-warm font-bold rounded-xl"
+          >
+            🏠 Vissza a főoldalra
+          </motion.button>
+        </motion.div>
+      </main>
+    );
+  }
 
   // Waiting screen
   if (status === 'waiting') {
