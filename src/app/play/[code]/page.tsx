@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, use, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence, Reorder } from 'framer-motion';
 import Background from '@/components/layout/Background';
 import { pusherClient, getGameChannel } from '@/lib/pusher';
@@ -36,6 +37,8 @@ interface ExtendedQuestion extends Question {
 
 export default function PlayPage({ params }: Props) {
   const { code } = use(params);
+  const searchParams = useSearchParams();
+  const autoJoinAttempted = useRef(false);
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState<AvatarId>(() => getRandomAvatar());
   const [playerId, setPlayerId] = useState('');
@@ -101,6 +104,35 @@ export default function PlayPage({ params }: Props) {
   
   // FÁZIS 4: Connection state
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
+
+  // Load saved player data from localStorage
+  useEffect(() => {
+    const savedName = localStorage.getItem('playerName');
+    const savedAvatar = localStorage.getItem('playerAvatar') as AvatarId | null;
+
+    if (savedName) {
+      setName(savedName);
+    }
+    if (savedAvatar && AVATARS[savedAvatar]) {
+      setAvatar(savedAvatar);
+    }
+  }, []);
+
+  // Auto-join if URL has autoJoin parameter and we have saved data
+  useEffect(() => {
+    if (autoJoinAttempted.current) return;
+
+    const shouldAutoJoin = searchParams.get('autoJoin') === 'true';
+    const savedName = localStorage.getItem('playerName');
+
+    if (shouldAutoJoin && savedName && savedName.trim().length >= 2) {
+      autoJoinAttempted.current = true;
+      // Small delay to ensure state is loaded
+      setTimeout(() => {
+        joinRoom();
+      }, 100);
+    }
+  }, [searchParams]);
 
   const joinRoom = async () => {
     const trimmedName = name.trim();
@@ -168,6 +200,10 @@ export default function PlayPage({ params }: Props) {
       setPlayerId(data.player.id);
       setIsJoined(true);
       soundManager.play('correct');
+
+      // Save player data for future quick joins
+      localStorage.setItem('playerName', trimmedName);
+      localStorage.setItem('playerAvatar', avatar);
     } catch (err) {
       // FÁZIS 4: Better network error handling
       console.error('Join room error:', err);
