@@ -91,9 +91,9 @@ export default function HostPage({ params }: Props) {
   // Countdown state
   const [startCountdown, setStartCountdown] = useState<number | null>(null);
 
-  // Generate QR code
+  // Generate QR code with auto-join parameter for returning players
   useEffect(() => {
-    const url = `${window.location.origin}/play/${code}`;
+    const url = `${window.location.origin}/play/${code}?autoJoin=true`;
     QRCode.toDataURL(url, { width: 200, margin: 1 }).then(setQrCode);
   }, [code]);
 
