@@ -267,48 +267,60 @@ export default function PlayPage({ params }: Props) {
       setSelectedAnswer(null);
     });
 
-    channel.bind('question-shown', (data: { 
-      question: ExtendedQuestion; 
-      questionIndex: number; 
-      totalQuestions: number; 
+    channel.bind('question-shown', (data: {
+      question: ExtendedQuestion;
+      questionIndex: number;
+      totalQuestions: number;
       roundInfo?: RoundInfo;
       serverTime?: number;
       timeLimit?: number;
+      showDelay?: number;
     }) => {
-      // Round transition csak a host képernyőn jelenjen meg, ne a telefonon
-      // setTransitionRoundInfo és setShowRoundTransition ELTÁVOLÍTVA
-      if (data.roundInfo) {
-          setCurrentRound(data.roundInfo.current);
-      }
+      const showQuestion = () => {
+        // Round transition csak a host képernyőn jelenjen meg, ne a telefonon
+        // setTransitionRoundInfo és setShowRoundTransition ELTÁVOLÍTVA
+        if (data.roundInfo) {
+            setCurrentRound(data.roundInfo.current);
+        }
 
-      setCurrentQuestion(data.question);
-      setQuestionIndex(data.questionIndex);
-      setTotalQuestions(data.totalQuestions);
-      setHasAnswered(false);
-      setSelectedAnswer(null);
-      setAnswerValue('');
-      setShowCorrect(false);
-      setCorrectAnswer(null);
-      setEliminatedAnswers([]);
-      setActivePowerUp(undefined);
-      
-      // FÁZIS 4: Better timer sync using server timestamp
-      const timeLimit = data.timeLimit || settings?.timeLimit || 15;
-      if (data.serverTime) {
-        const now = Date.now();
-        const latency = now - data.serverTime;
-        const adjustedTime = Math.max(0, timeLimit - Math.floor(latency / 1000));
-        setTimeRemaining(adjustedTime);
+        setCurrentQuestion(data.question);
+        setQuestionIndex(data.questionIndex);
+        setTotalQuestions(data.totalQuestions);
+        setHasAnswered(false);
+        setSelectedAnswer(null);
+        setAnswerValue('');
+        setShowCorrect(false);
+        setCorrectAnswer(null);
+        setEliminatedAnswers([]);
+        setActivePowerUp(undefined);
+
+        // FÁZIS 4: Better timer sync using server timestamp
+        const timeLimit = data.timeLimit || settings?.timeLimit || 15;
+        if (data.serverTime) {
+          const now = Date.now();
+          const latency = now - data.serverTime;
+          // Account for showDelay in the adjusted time
+          const delaySeconds = data.showDelay ? data.showDelay / 1000 : 0;
+          const adjustedTime = Math.max(0, timeLimit - Math.floor(latency / 1000) + delaySeconds);
+          setTimeRemaining(adjustedTime);
+        } else {
+          setTimeRemaining(timeLimit);
+        }
+
+        setQuestionType(data.question.type);
+
+        if (data.question.type === 'sorting') {
+            // Shuffle items for initial state
+            const items = [...data.question.answers].sort(() => Math.random() - 0.5);
+            setSortingItems(items);
+        }
+      };
+
+      // Handle delay from server (for Vercel serverless compatibility)
+      if (data.showDelay) {
+        setTimeout(showQuestion, data.showDelay);
       } else {
-        setTimeRemaining(timeLimit);
-      }
-      
-      setQuestionType(data.question.type);
-      
-      if (data.question.type === 'sorting') {
-          // Shuffle items for initial state
-          const items = [...data.question.answers].sort(() => Math.random() - 0.5);
-          setSortingItems(items);
+        showQuestion();
       }
     });
 
@@ -421,11 +433,20 @@ export default function PlayPage({ params }: Props) {
     });
 
     // Voting events
-    channel.bind('voting-started', (data: { categories: CategoryOption[] }) => {
-      setStatus('voting');
-      setVotingCategories(data.categories);
-      setHasVoted(false);
-      setVotedCategory(null);
+    channel.bind('voting-started', (data: { categories: CategoryOption[]; showDelay?: number }) => {
+      const showVoting = () => {
+        setStatus('voting');
+        setVotingCategories(data.categories);
+        setHasVoted(false);
+        setVotedCategory(null);
+      };
+
+      // Handle delay from server (for Vercel serverless compatibility)
+      if (data.showDelay) {
+        setTimeout(showVoting, data.showDelay);
+      } else {
+        showVoting();
+      }
     });
 
     channel.bind('voting-ended', (data: { winner: CategoryType; winnerName: string; winnerIcon: string }) => {
