@@ -95,8 +95,8 @@ export function getRandomAvatar(): AvatarId {
   return AVATARS[Math.floor(Math.random() * AVATARS.length)].id;
 }
 
-export function getAvatarEmoji(id: AvatarId): string {
-  return AVATARS.find(a => a.id === id)?.emoji || '👤';
+export function getAvatarEmoji(id: AvatarId | null): string {
+  return id ? AVATARS.find(a => a.id === id)?.emoji || '👤' : '👤';
 }
 
 // Power-up types
